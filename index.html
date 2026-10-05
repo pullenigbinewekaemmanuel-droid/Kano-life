@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kano Life V3</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#171717;
+  color:white;
+  overflow:hidden;
+  touch-action:none;
+}
+
+#game{
+  width:100vw;
+  height:100vh;
+  position:relative;
+  overflow:hidden;
+  background:#c9a96e;
+}
+
+#topbar{
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  z-index:20;
+  background:rgba(0,0,0,.82);
+  padding:9px;
+  display:flex;
+  justify-content:space-around;
+  font-size:13px;
+  border-bottom:2px solid #333;
+}
+
+.stat b{color:#ffd54a}
+
+#world{
+  position:absolute;
+  width:1100px;
+  height:800px;
+  left:50%;
+  top:52%;
+  transform:translate(-50%,-50%);
+  background:
+    radial-gradient(circle at 20% 20%,rgba(255,255,255,.08),transparent 20%),
+    #d8b77a;
+}
+
+.road{
+  position:absolute;
+  background:#555;
+  border:4px solid #444;
+  box-shadow:inset 0 0 0 2px #777;
+}
+
+.road.horizontal{height:85px}
+.road.vertical{width:85px}
+
+.road span{
+  position:absolute;
+  color:#ddd;
+  font-size:13px;
+  font-weight:bold;
+  white-space:nowrap;
+  opacity:.75;
+}
+
+.building{
+  position:absolute;
+  width:120px;
+  height:85px;
+  background:#ead9b0;
+  border:4px solid #744c2c;
+  border-radius:8px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  color:#24170e;
+  font-size:13px;
+  font-weight:bold;
+  box-shadow:0 5px 8px rgba(0,0,0,.25);
+}
+
+.building .emoji{font-size:28px}
+
+#player{
+  position:absolute;
+  width:38px;
+  height:38px;
+  z-index:12;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:30px;
+  transition:.05s;
+}
+
+.npc,.car{
+  position:absolute;
+  z-index:10;
+  font-size:28px;
+  transition:left .25s,top .25s;
+}
+
+.npcName{
+  position:absolute;
+  transform:translate(-50%,-32px);
+  background:rgba(0,0,0,.7);
+  padding:2px 5px;
+  border-radius:5px;
+  font-size:9px;
+  white-space:nowrap;
+}
+
+#controls{
+  position:absolute;
+  z-index:30;
+  bottom:12px;
+  left:10px;
+  display:grid;
+  grid-template-columns:55px 55px 55px;
+  grid-template-rows:55px 55px;
+  gap:5px;
+}
+
+.control{
+  border:0;
+  border-radius:12px;
+  background:rgba(0,0,0,.78);
+  color:white;
+  font-size:23px;
+  font-weight:bold;
+}
+
+#up{grid-column:2}
+#left{grid-column:1;grid-row:2}
+#down{grid-column:2;grid-row:2}
+#right{grid-column:3;grid-row:2}
+
+#actions{
+  position:absolute;
+  z-index:30;
+  right:10px;
+  bottom:12px;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.action{
+  border:0;
+  border-radius:12px;
+  padding:11px 15px;
+  background:#111;
+  color:white;
+  font-weight:bold;
+  font-size:13px;
+}
+
+.action:active,.control:active{
+  transform:scale(.94);
+}
+
+#phone{
+  position:absolute;
+  right:10px;
+  top:55px;
+  z-index:40;
+  background:#111;
+  border:2px solid #555;
+  border-radius:15px;
+  padding:12px;
+  width:230px;
+  display:none;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);
+}
+
+#phone h3{
+  margin:0 0 10px;
+  text-align:center;
+}
+
+.phoneBtn{
+  width:100%;
+  padding:10px;
+  margin:4px 0;
+  border:0;
+  border-radius:9px;
+  background:#333;
+  color:white;
+  text-align:left;
+}
+
+#message{
+  position:absolute;
+  z-index:50;
+  left:50%;
+  bottom:150px;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,.88);
+  padding:10px 15px;
+  border-radius:10px;
+  font-size:13px;
+  display:none;
+  max-width:80%;
+  text-align:center;
+}
+
+#mission{
+  position:absolute;
+  z-index:25;
+  top:55px;
+  left:10px;
+  background:rgba(0,0,0,.75);
+  padding:8px;
+  border-radius:8px;
+  font-size:11px;
+  display:none;
+}
+
+#mission b{color:#ffd54a}
+
+.traffic{
+  pointer-events:none;
+}
+
+@media(max-width:600px){
+  #world{
+    width:900px;
+    height:700px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+  <div id="topbar">
+    <div class="stat">💰 ₦<b id="money">15000</b></div>
+    <div class="stat">⚡ <b id="energy">100</b></div>
+    <div class="stat">⭐ Lv.<b id="level">1</b></div>
+    <div class="stat">🚗 <b id="car">None</b></div>
+  </div>
+
+  <div id="mission">
+    🎯 Mission:
+    <b id="missionText">Explore Kano</b>
+  </div>
+
+  <div id="world">
+
+    <!-- ROADS -->
+    <div class="road horizontal" style="left:0;top:120px;width:1100px">
+      <span style="left:400px;top:32px">SABON GARI ROAD</span>
+    </div>
+
+    <div class="road horizontal" style="left:0;top:420px;width:1100px">
+      <span style="left:430px;top:32px">KANO CENTRAL</span>
+    </div>
+
+    <div class="road vertical" style="left:300px;top:0;height:800px">
+      <span style="left:25px;top:300px;writing-mode:vertical-rl">BOMPAI ROAD</span>
+    </div>
+
+    <div class="road vertical" style="left:760px;top:0;height:800px">
+      <span style="left:25px;top:300px;writing-mode:vertical-rl">KOFAR WAMBAI ROAD</span>
+    </div>
+
+    <!-- BUILDINGS -->
+    <div class="building" data-place="home" style="left:80px;top:210px">
+      <div class="emoji">🏠</div>
+      HOME
+    </div>
+
+    <div class="building" data-place="fashion" style="left:450px;top:210px">
+      <div class="emoji">👕</div>
+      FASHION
+    </div>
+
+    <div class="building" data-place="market" style="left:870px;top:210px">
+      <div class="emoji">🛒</div>
+      MARKET
+    </div>
+
+    <div class="building" data-place="bank" style="left:80px;top:520px">
+      <div class="emoji">🏦</div>
+      BANK
+    </div>
+
+    <div class="building" data-place="mechanic" style="left:450px;top:520px">
+      <div class="emoji">🔧</div>
+      MECHANIC
+    </div>
+
+    <div class="building" data-place="food" style="left:870px;top:520px">
+      <div class="emoji">🍲</div>
+      FOOD
+    </div>
+
+    <div class="building" data-place="hospital" style="left:80px;top:670px">
+      <div class="emoji">🏥</div>
+      HOSPITAL
+    </div>
+
+    <div class="building" data-place="school" style="left:450px;top:670px">
+      <div class="emoji">🏫</div>
+      SCHOOL
+    </div>
+
+    <!-- PLAYER -->
+    <div id="player">🧍🏾</div>
+
+    <!-- NPCS -->
+    <div class="npc" id="sani" style="left:240px;top:165px">
+      🧔🏾
+      <div class="npcName">Sani</div>
+    </div>
+
+    <div class="npc" id="amina" style="left:610px;top:165px">
+      👩🏾
+      <div class="npcName">Amina</div>
+    </div>
+
+    <div class="npc" id="musa" style="left:680px;top:470px">
+      👨🏾‍🔧
+      <div class="npcName">Musa</div>
+    </div>
+
+    <div class="npc" id="hauwa" style="left:1000px;top:470px">
+      👩🏾‍🍳
+      <div class="npcName">Hauwa</div>
+    </div>
+
+    <div class="npc" id="bello" style="left:390px;top:390px">
+      🧑🏾
+      <div class="npcName">Bello</div>
+    </div>
+
+    <!-- TRAFFIC -->
+    <div class="car traffic" id="traffic1" style="left:120px;top:145px">🚗</div>
+    <div class="car traffic" id="traffic2" style="left:700px;top:445px">🚌</div>
+    <div class="car traffic" id="traffic3" style="left:735px;top:270px">🛺</div>
+
+  </div>
+
+  <div id="controls">
+    <button class="control" id="up">▲</button>
+    <button class="control" id="left">◀</button>
+    <button class="control" id="down">▼</button>
+    <button class="control" id="right">▶</button>
+  </div>
+
+  <div id="actions">
+    <button class="action" onclick="talk()">💬 Talk</button>
+    <button class="action" onclick="job()">💼 Job</button>
+    <button class="action" onclick="eat()">🍲 Eat</button>
+    <button class="action" onclick="rest()">😴 Rest</button>
+    <button class="action" onclick="interact()">📍 Interact</button>
+    <button class="action" onclick="togglePhone()">📱 Phone</button>
+  </div>
+
+  <div id="phone">
+    <h3>📱 Kano Phone</h3>
+    <button class="phoneBtn" onclick="startMission()">🎯 Delivery Mission</button>
+    <button class="phoneBtn" onclick="buyClothes()">👕 Buy Outfit — ₦2,500</button>
+    <button class="phoneBtn" onclick="buyCar()">🚗 Buy Used Car — ₦8,000</button>
+    <button class="phoneBtn" onclick="upgradeHouse()">🏠 Upgrade House</button>
+    <button class="phoneBtn" onclick="togglePhone()">❌ Close</button>
+  </div>
+
+  <div id="message"></div>
+
+</div>
+
+<script>
+
+let money = 15000;
+let energy = 100;
+let level = 1;
+let xp = 0;
+let car = false;
+let clothes = false;
+let houseLevel = 1;
+
+let playerX = 530;
+let playerY = 360;
+
+let missionActive = false;
+let missionSpots = {
+  market:false,
+  bank:false,
+  mechanic:false
+};
+
+const player = document.getElementById("player");
+const world = document.getElementById("world");
+
+function update(){
+  player.style.left = playerX + "px";
+  player.style.top = playerY + "px";
+
+  document.getElementById("money").textContent = money;
+  document.getElementById("energy").textContent = energy;
+  document.getElementById("level").textContent = level;
+  document.getElementById("car").textContent = car ? "Used Car" : "None";
+
+  saveGame();
+}
+
+function message(text){
+  const m=document.getElementById("message");
+  m.textContent=text;
+  m.style.display="block";
+
+  clearTimeout(window.msgTimer);
+
+  window.msgTimer=setTimeout(()=>{
+    m.style.display="none";
+  },2500);
+}
+
+function move(dx,dy){
+
+  let speed = car ? 22 : 16;
+
+  playerX += dx*speed;
+  playerY += dy*speed;
+
+  playerX=Math.max(10,Math.min(1050,playerX));
+  playerY=Math.max(20,Math.min(750,playerY));
+
+  if(!car){
+    energy=Math.max(0,energy-1);
+  }
+
+  checkMission();
+  update();
+}
+
+function gainXP(amount){
+  xp+=amount;
+
+  if(xp>=100){
+    xp-=100;
+    level++;
+    message("⭐ Level up! You are now level "+level);
+  }
+}
+
+function job(){
+
+  if(energy<10){
+    message("You are too tired. Rest first.");
+    return;
+  }
+
+  money+=2000;
+  energy-=10;
+  gainXP(20);
+
+  message("💼 Job completed! +₦2,000");
+  update();
+}
+
+function eat(){
+
+  if(money<700){
+    message("Not enough money for food.");
+    return;
+  }
+
+  money-=700;
+  energy=Math.min(100,energy+35);
+  gainXP(5);
+
+  message("🍲 You ate some good food. +35 energy");
+  update();
+}
+
+function rest(){
+
+  energy=100;
+  message("😴 You rested at home.");
+  update();
+}
+
+function talk(){
+
+  const npcs=[
+    ["Sani","Sani: Omo, delivery jobs dey pay well!"],
+    ["Amina","Amina: Come check the latest clothes."],
+    ["Musa","Musa: Your car needs servicing?"],
+    ["Hauwa","Hauwa: Food is ready!"],
+    ["Bello","Bello: I have a delivery mission for you."]
+  ];
+
+  const p=npcs[Math.floor(Math.random()*npcs.length)];
+
+  message("💬 "+p[1]);
+}
+
+function interact(){
+
+  let closest=null;
+  let min=9999;
+
+  document.querySelectorAll(".building").forEach(b=>{
+
+    const x=parseInt(b.style.left);
+    const y=parseInt(b.style.top);
+
+    const dist=Math.hypot(playerX-x,playerY-y);
+
+    if(dist<min){
+      min=dist;
+      closest=b.dataset.place;
+    }
+
+  });
+
+  if(min>150){
+    message("📍 Move closer to a building.");
+    return;
+  }
+
+  const texts={
+    home:"🏠 This is your home.",
+    fashion:"👕 Welcome to the fashion shop.",
+    market:"🛒 The market is busy today.",
+    bank:"🏦 Welcome to Kano Bank.",
+    mechanic:"🔧 Musa can fix your car.",
+    food:"🍲 Fresh food is available here.",
+    hospital:"🏥 You can recover here.",
+    school:"🏫 School is open."
+  };
+
+  message(texts[closest]||"Nothing to do here.");
+
+  if(missionActive && missionSpots.hasOwnProperty(closest)){
+    missionSpots[closest]=true;
+    checkMission();
+  }
+}
+
+function startMission(){
+
+  togglePhone();
+
+  missionActive=true;
+
+  missionSpots={
+    market:false,
+    bank:false,
+    mechanic:false
+  };
+
+  document.getElementById("mission").style.display="block";
+
+  document.getElementById("missionText").textContent=
+    "Visit Market, Bank & Mechanic";
+
+  message("🎯 Delivery mission started!");
+
+  update();
+}
+
+function checkMission(){
+
+  if(!missionActive) return;
+
+  const places=[
+    ["market",870,210],
+    ["bank",80,520],
+    ["mechanic",450,520]
+  ];
+
+  places.forEach(p=>{
+
+    const d=Math.hypot(playerX-p[1],playerY-p[2]);
+
+    if(d<150){
+      missionSpots[p[0]]=true;
+    }
+
+  });
+
+  if(
+    missionSpots.market &&
+    missionSpots.bank &&
+    missionSpots.mechanic
+  ){
+
+    missionActive=false;
+    money+=5000;
+    gainXP(50);
+
+    document.getElementById("mission").style.display="none";
+
+    message("🎉 Mission complete! +₦5,000");
+
+    update();
+  }
+}
+
+function buyClothes(){
+
+  if(clothes){
+    message("😎 You already have this outfit.");
+    return;
+  }
+
+  if(money<2500){
+    message("Not enough money.");
+    return;
+  }
+
+  money-=2500;
+  clothes=true;
+
+  player.textContent="😎";
+
+  message("👕 New outfit purchased!");
+
+  togglePhone();
+  update();
+}
+
+function buyCar(){
+
+  if(car){
+    message("🚗 You already own a car.");
+    return;
+  }
+
+  if(money<8000){
+    message("Not enough money for the car.");
+    return;
+  }
+
+  money-=8000;
+  car=true;
+
+  message("🚗 You bought a used car!");
+
+  togglePhone();
+  update();
+}
+
+function upgradeHouse(){
+
+  let cost = houseLevel===1 ? 6000 : 10000;
+
+  if(houseLevel>=3){
+    message("🏠 Your house is fully upgraded!");
+    return;
+  }
+
+  if(money<cost){
+    message("Not enough money.");
+    return;
+  }
+
+  money-=cost;
+  houseLevel++;
+
+  message("🏠 House upgraded to Level "+houseLevel+"!");
+
+  togglePhone();
+  update();
+}
+
+function togglePhone(){
+
+  const p=document.getElementById("phone");
+
+  p.style.display =
+    p.style.display==="block" ? "none" : "block";
+}
+
+function saveGame(){
+
+  localStorage.setItem("kanoLifeSave",JSON.stringify({
+    money,
+    energy,
+    level,
+    xp,
+    car,
+    clothes,
+    houseLevel,
+    playerX,
+    playerY
+  }));
+}
+
+function loadGame(){
+
+  const data=JSON.parse(localStorage.getItem("kanoLifeSave"));
+
+  if(!data) return;
+
+  money=data.money;
+  energy=data.energy;
+  level=data.level;
+  xp=data.xp;
+  car=data.car;
+  clothes=data.clothes;
+  houseLevel=data.houseLevel;
+  playerX=data.playerX;
+  playerY=data.playerY;
+
+  if(clothes){
+    player.textContent="😎";
+  }
+}
+
+function button(id,dx,dy){
+
+  document.getElementById(id).addEventListener("touchstart",e=>{
+    e.preventDefault();
+    move(dx,dy);
+  });
+
+  document.getElementById(id).addEventListener("click",()=>{
+    move(dx,dy);
+  });
+}
+
+button("up",0,-1);
+button("down",0,1);
+button("left",-1,0);
+button("right",1,0);
+
+document.addEventListener("keydown",e=>{
+
+  if(e.key==="ArrowUp" || e.key==="w"){
+    move(0,-1);
+  }
+
+  if(e.key==="ArrowDown" || e.key==="s"){
+    move(0,1);
+  }
+
+  if(e.key==="ArrowLeft" || e.key==="a"){
+    move(-1,0);
+  }
+
+  if(e.key==="ArrowRight" || e.key==="d"){
+    move(1,0);
+  }
+
+});
+
+function moveNPC(id){
+
+  const n=document.getElementById(id);
+
+  let x=parseInt(n.style.left);
+  let y=parseInt(n.style.top);
+
+  const dir=Math.floor(Math.random()*4);
+
+  if(dir===0)x+=20;
+  if(dir===1)x-=20;
+  if(dir===2)y+=20;
+  if(dir===3)y-=20;
+
+  x=Math.max(20,Math.min(1040,x));
+  y=Math.max(20,Math.min(740,y));
+
+  n.style.left=x+"px";
+  n.style.top=y+"px";
+}
+
+setInterval(()=>{
+  ["sani","amina","musa","hauwa","bello"].forEach(id=>moveNPC(id));
+},1800);
+
+let trafficX1=120;
+let trafficX2=700;
+
+setInterval(()=>{
+
+  trafficX1+=25;
+
+  if(trafficX1>1050){
+    trafficX1=-40;
+  }
+
+  document.getElementById("traffic1").style.left=
+    trafficX1+"px";
+
+},400);
+
+setInterval(()=>{
+
+  trafficX2-=20;
+
+  if(trafficX2<-50){
+    trafficX2=1050;
+  }
+
+  document.getElementById("traffic2").style.left=
+    trafficX2+"px";
+
+},450);
+
+loadGame();
+update();
+
+</script>
+
+</body>
+</html>
